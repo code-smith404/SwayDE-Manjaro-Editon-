@@ -59,8 +59,7 @@ fi
 if [[ "$ROOT_DIR" != /* ]]; then
     ROOT_DIR="$PWD/$ROOT_DIR"
 fi
-mkdir -p -- "$ROOT_DIR"
-ROOT_DIR=$(cd -- "$ROOT_DIR" && pwd -P)
+ROOT_DIR=$(realpath -m -- "$ROOT_DIR")
 
 if [[ "$ROOT_DIR" == / ]] && ((EUID != 0)) && [[ "$DRY_RUN" == false ]]; then
     echo "error: installation into / requires root; run with sudo" >&2
@@ -80,8 +79,16 @@ conflicts=0
 for source in "${entries[@]}"; do
     relative=${source#"$PAYLOAD"/}
     destination="$ROOT_DIR/$relative"
+    needs_backup=false
+
     if [[ -e "$destination" || -L "$destination" ]]; then
-        ((conflicts += 1))
+        if [[ ! -d "$source" || -L "$source" || ! -d "$destination" || -L "$destination" ]]; then
+            needs_backup=true
+            ((conflicts += 1))
+        fi
+    fi
+
+    if [[ "$needs_backup" == true ]]; then
         if [[ "$DRY_RUN" == true ]]; then
             printf 'backup existing: /%s\n' "$relative"
         fi
@@ -113,6 +120,9 @@ if [[ "$ASSUME_YES" == false ]]; then
             ;;
     esac
 fi
+
+mkdir -p -- "$ROOT_DIR"
+ROOT_DIR=$(cd -- "$ROOT_DIR" && pwd -P)
 
 for source in "${entries[@]}"; do
     relative=${source#"$PAYLOAD"/}
