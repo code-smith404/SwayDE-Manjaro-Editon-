@@ -1,0 +1,1 @@
+# SwayDE-Manjaro-Editon-
